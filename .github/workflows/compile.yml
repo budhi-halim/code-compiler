@@ -97,12 +97,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - name: Set up Java / Kotlin (JDK 25)
+      - name: Set up Java / Kotlin (JDK 21 on Windows ARM64; 25 otherwise)
         if: matrix.language == 'java' || matrix.language == 'kotlin'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '25'
+          java-version: ${{ matrix.target == 'windows-arm64' && '21' || '25' }}
       - name: Set up Go
         if: matrix.language == 'go'
         uses: actions/setup-go@v7
