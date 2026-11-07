@@ -1,0 +1,105 @@
+name: Experimental Swift Windows toolchain
+
+# Tests the official Swift x64 and ARM64 Windows installers.
+# Kept separate until both builds prove reliable.
+on:
+  push:
+    branches: [master]
+    paths: ['.github/workflows/swift-windows-experimental.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-swift:
+    name: Swift / ${{ matrix.target }} (experimental)
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-x64
+            runner: windows-2025
+            swift_arch: windows10
+          - target: windows-arm64
+            runner: windows-11-arm
+            swift_arch: windows10-arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install official Swift 6.4.2
+        shell: pwsh
+        env:
+          SWIFT_ARCH: ${{ matrix.swift_arch }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = "6.4.2"
+          $filename = "swift-$version-RELEASE-$env:SWIFT_ARCH.exe"
+          $uri = "https://download.swift.org/swift-$version-release/$env:SWIFT_ARCH/swift-$version-RELEASE/$filename"
+          $installer = Join-Path $env:RUNNER_TEMP $filename
+          Write-Host "Downloading official Swift installer: $uri"
+          Invoke-WebRequest -Uri $uri -OutFile $installer
+          $process = Start-Process -FilePath $installer -ArgumentList "/quiet", "/norestart" -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) {
+            throw "Swift installer failed: $($process.ExitCode)"
+          }
+          $roots = @(
+            "$env:ProgramFiles\Swift",
+            "$env:ProgramFiles\Toolchains",
+            "$env:LOCALAPPDATA\Programs\Swift",
+            "$env:LOCALAPPDATA\Programs\Toolchains"
+          )
+          $compilers = @()
+          foreach ($root in $roots) {
+            if (Test-Path $root) {
+              $compilers += @(Get-ChildItem -Path $root -Filter swiftc.exe -File -Recurse -ErrorAction SilentlyContinue)
+            }
+          }
+          if (-not $compilers) { throw "Swift installed but swiftc.exe was not located" }
+          $compiler = $compilers | Select-Object -First 1
+          Write-Host "Swift compiler: $($compiler.FullName)"
+          $paths = @($compiler.DirectoryName)
+          foreach ($root in $roots) {
+            if (Test-Path $root) {
+              $paths += @(Get-ChildItem -Path $root -Filter swiftCore.dll -File -Recurse -ErrorAction SilentlyContinue |
+                         ForEach-Object { $_.DirectoryName })
+            }
+          }
+          $paths = $paths | Select-Object -Unique
+          foreach ($p in $paths) {
+            Add-Content -Path $env:GITHUB_PATH -Value $p
+          }
+          $sdkRoots = @(
+            "$env:ProgramFiles\Swift\Platforms\Windows.platform\Developer\SDKs",
+            "$env:ProgramFiles\Platforms\Windows.platform\Developer\SDKs"
+          )
+          foreach ($s in $sdkRoots) {
+            if (Test-Path $s) {
+              $sdk = Get-ChildItem $s -Directory | Where-Object { $_.Name -like '*Windows.sdk*' } | Select-Object -First 1
+              if ($sdk) {
+                Add-Content -Path $env:GITHUB_ENV -Value "SDKROOT=$($sdk.FullName)"
+                break
+              }
+            }
+          }
+      - name: Compile and test Swift
+        shell: pwsh
+        env:
+          COMPILER_LANGUAGE: swift
+          COMPILER_TARGET: ${{ matrix.target }}
+          COMPILER_NAME: hello
+          COMPILER_PROJECT: samples/swift
+        run: |
+          Get-Command swiftc
+          swiftc --version
+          python scripts/build.py
+      - name: Upload Swift executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-${{ matrix.target }}-experimental
+          path: compiled-output/
+          if-no-files-found: error
+          retention-days: 14
