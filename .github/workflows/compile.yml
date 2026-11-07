@@ -65,8 +65,8 @@ jobs:
       - name: Select builds
         id: matrix
         env:
-          REQ_LANGUAGE: ${{ github.event_name == 'push' && 'all' || inputs.language || 'all' }}
-          REQ_TARGET: ${{ github.event_name == 'push' && 'linux-x64' || inputs.target || 'all' }}
+          REQ_LANGUAGE: ${{ inputs.language || 'all' }}
+          REQ_TARGET: ${{ inputs.target || 'linux-x64' }}
         run: |
           matrix="$(python3 .compiler/scripts/plan_matrix.py)"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
