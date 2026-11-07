@@ -1,6 +1,7 @@
 name: Full matrix verification
 
 # Runs only when this one-time verification workflow is initially added or edited.
+# Corrected full-matrix rerun (all language/target combinations).
 # Routine pushes continue to use the nine-language Linux smoke matrix.
 on:
   push:
