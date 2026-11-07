@@ -1,0 +1,24 @@
+name: Full matrix verification
+
+# Runs only when this one-time verification workflow is initially added or edited.
+# Routine pushes continue to use the nine-language Linux smoke matrix.
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/full-matrix-verification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-all:
+    uses: ./.github/workflows/compile.yml
+    with:
+      language: all
+      target: all
+      project: ''
+      binary_name: hello
+    permissions:
+      contents: read
