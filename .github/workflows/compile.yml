@@ -1,0 +1,140 @@
+name: Multi-platform compiler
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/compile.yml'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'samples/**'
+  workflow_dispatch:
+    inputs:
+      language:
+        description: Language to compile (or all nine)
+        type: choice
+        required: true
+        default: all
+        options: [all, c, cpp, csharp, rust, go, zig, swift, java, kotlin]
+      target:
+        description: Target system/architecture
+        type: choice
+        required: true
+        default: all
+        options: [all, windows-x64, windows-arm64, linux-x64, linux-arm64, macos-x64, macos-arm64]
+      project:
+        description: Path within this repository (empty uses sample project)
+        type: string
+        default: ''
+      binary_name:
+        description: Expected program/target name
+        type: string
+        default: hello
+  workflow_call:
+    inputs:
+      language:
+        type: string
+        required: true
+      target:
+        type: string
+        default: all
+      project:
+        type: string
+        default: ''
+      binary_name:
+        type: string
+        default: hello
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Fetch compiler support files
+        uses: actions/checkout@v4
+        with:
+          repository: budhi-halim/code-compiler
+          path: .compiler
+          persist-credentials: false
+      - name: Validate matrix logic
+        run: python3 -m unittest discover -s .compiler/tests -p 'test_*.py'
+      - name: Select builds
+        id: matrix
+        env:
+          REQ_LANGUAGE: ${{ github.event_name == 'push' && 'all' || inputs.language || 'all' }}
+          REQ_TARGET: ${{ github.event_name == 'push' && 'linux-x64' || inputs.target || 'all' }}
+        run: |
+          matrix="$(python3 .compiler/scripts/plan_matrix.py)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix"
+
+  compile:
+    needs: plan
+    name: ${{ matrix.language }} / ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Check out project sources
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Get compiler build machinery
+        uses: actions/checkout@v4
+        with:
+          repository: budhi-halim/code-compiler
+          path: .compiler
+          persist-credentials: false
+      - name: Set up C# (.NET 10)
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Set up Java / Kotlin (JDK 25)
+        if: matrix.language == 'java' || matrix.language == 'kotlin'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27'
+          cache: false
+      - name: Set up Rust stable
+        if: matrix.language == 'rust'
+        uses: dtolnay/rust-toolchain@stable
+      - name: Set up Zig
+        if: matrix.language == 'zig'
+        uses: mlugg/setup-zig@v2
+        with:
+          version: '0.15.2'
+      - name: Build and verify output
+        shell: pwsh
+        env:
+          COMPILER_LANGUAGE: ${{ matrix.language }}
+          COMPILER_TARGET: ${{ matrix.target }}
+          COMPILER_PROJECT: ${{ inputs.project }}
+          COMPILER_NAME: ${{ inputs.binary_name || 'hello' }}
+        run: |
+          if ($IsWindows) {
+            python .compiler/scripts/build.py
+          } else {
+            python3 .compiler/scripts/build.py
+          }
+      - name: Upload binaries / packaged application
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.language }}-${{ matrix.target }}-${{ inputs.binary_name || 'hello' }}
+          path: compiled-output/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6

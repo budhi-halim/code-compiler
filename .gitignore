@@ -1,0 +1,14 @@
+# Build intermediates, outputs, and editor files
+.compiler/
+.compiler-build/
+compiled-output/
+dist/
+out/
+target/
+**/bin/
+**/obj/
+.gradle/
+.idea/
+.vscode/
+*.log
+.DS_Store
