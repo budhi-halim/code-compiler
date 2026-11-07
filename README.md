@@ -16,7 +16,7 @@ Central GitHub Actions build hub for **nine languages** and **six OS/CPU targets
 | Kotlin | yes | yes | yes | yes | yes | yes | JAR + jpackage app image with JVM |
 | Swift | yes | yes | yes | yes | yes | yes | native executable (+ Windows runtime DLLs) |
 
-**Important:** "yes" means the build is configured. All 52 original combinations passed individually across the first full verification and focused retests; Windows Swift was subsequently validated in separate x64 and ARM64 integration experiments. Recheck current Actions runs for any regressions.
+**Verified on November 7, 2026:** all **54 language/platform combinations** compiled successfully, ran the sample executable on its native runner, and uploaded an artifact ZIP. Verification was spread across [full matrix (49 of 52)](https://github.com/budhi-halim/code-compiler/actions/runs/42375922743), [Windows Java/Kotlin fixes (3 of 3)](https://github.com/budhi-halim/code-compiler/actions/runs/42376398946), and [Windows Swift integration (2 of 2)](https://github.com/budhi-halim/code-compiler/actions/runs/42376775948). The first run's three failures were fixed and retested. Future runner or toolchain updates can cause regressions, so check current Actions runs.
 
 ## 1. Build a sample here (no local tools)
 
@@ -82,7 +82,7 @@ Artifacts expire after 14 days. For long-term distribution, promote verified bui
 
 - Public-repository standard Actions runners are generally free, but GitHub's acceptable-use policy and concurrency limits apply.
 - Six native runner architectures: `windows-2025`, `windows-11-arm`, `ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15-intel`, `macos-15`.
-- GitHub Actions is the compiler host; only downloaded build outputs occupy your own PC.
+- GitHub Actions is the compiler host; only downloaded build outputs occupy your own PC. For Swift on Windows, the build downloads the official 6.4.2 toolchain onto a disposable runner and bundles the runtime libraries.
 - When project dependencies grow, use lockfiles and pin third-party Actions to reviewed commit SHAs.
 - The current framework builds single programs, not Windows installers, Python wheels, Android APKs, iOS bundles, or WebAssembly. Those can be added as separate recipes.
 - Official runner labels: https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job
