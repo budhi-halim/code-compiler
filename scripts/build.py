@@ -103,7 +103,8 @@ def main():
                  "-C", classes, ".")
             main_class = "Main"
         else:
-            call("kotlinc", project / "Main.kt", "-include-runtime", "-d", jar)
+            call("kotlinc.bat" if os.name == "nt" else "kotlinc",
+                 project / "Main.kt", "-include-runtime", "-d", jar)
             main_class = "MainKt"
         shutil.copy2(jar, output / jar.name)
         args = ["jpackage", "--type", "app-image", "--name", name,
