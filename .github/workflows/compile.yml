@@ -117,6 +117,12 @@ jobs:
         uses: mlugg/setup-zig@v2
         with:
           version: '0.15.2'
+      - name: Set up Swift for Windows (6.4.2)
+        if: matrix.language == 'swift' && startsWith(matrix.target, 'windows-')
+        shell: pwsh
+        env:
+          SWIFT_TARGET: ${{ matrix.target }}
+        run: . .compiler/scripts/setup_swift_windows.ps1
       - name: Build and verify output
         shell: pwsh
         env:

@@ -14,9 +14,9 @@ Central GitHub Actions build hub for **nine languages** and **six OS/CPU targets
 | C# | yes | yes | yes | yes | yes | yes | self-contained .NET executable (managed code) |
 | Java | yes | yes | yes | yes | yes | yes | JAR + jpackage app image with JVM |
 | Kotlin | yes | yes | yes | yes | yes | yes | JAR + jpackage app image with JVM |
-| Swift | not yet | not yet | yes | yes | yes | yes | native executable |
+| Swift | yes | yes | yes | yes | yes | yes | native executable (+ Windows runtime DLLs) |
 
-**Important:** "yes" means a build job has been configured for that platform, **not** that every job has already passed. Look at Actions runs for live results. Windows Swift x64/ARM64 is possible with official Swift toolchains, but it needs separate bootstrap and is intentionally excluded until it can be tested reliably.
+**Important:** "yes" means the build is configured. All 52 original combinations passed individually across the first full verification and focused retests; Windows Swift was subsequently validated in separate x64 and ARM64 integration experiments. Recheck current Actions runs for any regressions.
 
 ## 1. Build a sample here (no local tools)
 
@@ -27,7 +27,7 @@ Central GitHub Actions build hub for **nine languages** and **six OS/CPU targets
 5. Leave **Project** empty and **Binary name** = `hello` for the provided sample projects.
 6. Open the finished workflow run. Under **Artifacts**, download `language-target-hello` ZIP.
 
-Choosing `all/all` schedules 52 combinations (Swift on Windows excluded). A push to `master` runs a smaller nine-language smoke matrix on Linux x64 automatically.
+Choosing `all/all` schedules all 54 combinations (9 languages x 6 platforms). A push to `master` runs a smaller nine-language smoke matrix on Linux x64 automatically.
 
 ## 2. Compile a project kept in another repository
 
@@ -72,7 +72,7 @@ For complex projects that use native libraries, special build flags, GUI framewo
 
 ## 4. Artifact layout and verification
 
-Each successful job uploads `compiled-output/` with the executable and `build-info.json`, plus `SHA256SUMS.txt` for its primary executable. For Java and Kotlin, an additional portable JAR is included and `jpackage` bundles a private JVM runtime into a platform-specific app image, so these outputs are much larger than C/Go/Rust binaries. C# uses .NET 10 self-contained single-file publishing, not native AOT.
+Each successful job uploads `compiled-output/` with the executable and `build-info.json`, plus `SHA256SUMS.txt` for its primary executable. For Java and Kotlin, an additional portable JAR is included and `jpackage` bundles a private JVM runtime into a platform-specific app image, so these outputs are much larger than C/Go/Rust binaries. C# uses .NET 10 self-contained single-file publishing, not native AOT. On Windows, Swift 6.4.2 runtime DLLs are bundled alongside the executable. Windows ARM64 Java/Kotlin builds use Temurin JDK 21 because JDK 25 is not distributed for that runner.
 
 Built-in Hello World projects run a smoke test on the matching runner before upload. Custom projects are built and checked for expected files but are **not automatically executed**, since real programs can require arguments/configuration.
 

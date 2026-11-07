@@ -1,4 +1,4 @@
-"""Plan native six-target GitHub Actions builds; skip unsupported Swift Windows bootstrap."""
+"""Plan native builds for nine languages across all six GitHub-hosted target systems."""
 import json
 import os
 
@@ -23,10 +23,9 @@ def plan(language="all", target="all"):
     jobs = [
         {"language": lang, "target": tgt, "runner": RUNNERS[tgt]}
         for lang in languages for tgt in targets
-        if not (lang == "swift" and tgt.startswith("windows-"))
     ]
     if not jobs:
-        raise ValueError("Swift Windows builds are not bootstrapped yet; use Linux/macOS.")
+        raise ValueError("No valid builds were requested.")
     return {"include": jobs}
 
 

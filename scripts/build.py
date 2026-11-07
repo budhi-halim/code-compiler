@@ -129,12 +129,33 @@ def main():
     else:
         raise ValueError("Unsupported language: " + language)
 
+    # Windows Swift uses a redistributable runtime; copy its native DLLs beside
+    # the .exe so downloaded CLI binaries do not depend on a local Swift install.
+    if language == "swift" and target.startswith("windows-"):
+        swift_root = Path(os.environ["LOCALAPPDATA"]) / "Programs" / "Swift"
+        swift_runtime = swift_root / "Runtimes" / "6.4.2" / "usr" / "bin"
+        if not swift_runtime.is_dir():
+            raise FileNotFoundError(f"Swift redistributable runtime directory missing: {swift_runtime}")
+        bundled = 0
+        for dll in swift_runtime.glob("*.dll"):
+            shutil.copy2(dll, output / dll.name)
+            bundled += 1
+        if not bundled:
+            raise RuntimeError("No Swift runtime DLLs found to package")
+        print(f"Bundled {bundled} Swift runtime DLLs", flush=True)
+
     # The bundled examples have no args or external resources and can be smoke-tested.
     # A custom program may require configuration/inputs, so only validate its output files.
     if not requested_project:
         print("+ Smoke test:", exe, flush=True)
+        smoke_env = os.environ.copy()
+        if language == "swift" and target.startswith("windows-"):
+            smoke_env["PATH"] = os.pathsep.join(
+                p for p in smoke_env.get("PATH", "").split(os.pathsep)
+                if "swift" not in p.lower()
+            )
         p = subprocess.run([str(exe)], check=True, capture_output=True,
-                           text=True, timeout=40)
+                           text=True, timeout=40, env=smoke_env)
         combined = p.stdout + p.stderr
         print(combined, flush=True)
         if "Hello" not in combined:
