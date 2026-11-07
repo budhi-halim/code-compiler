@@ -95,6 +95,18 @@ jobs:
           COMPILER_NAME: hello
           COMPILER_PROJECT: samples/swift
         run: |
+          if (-not $env:SDKROOT) {
+            $swiftRoot = Join-Path $env:LOCALAPPDATA 'Programs\Swift'
+            Write-Host "SDKROOT not exported; searching installed Swift paths under $swiftRoot"
+            Get-ChildItem -Path $swiftRoot -Directory -Recurse -Depth 5 -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -match 'SDK|Platform|Windows|Swift' } |
+              Select-Object -First 50 -ExpandProperty FullName | ForEach-Object { Write-Host $_ }
+            $possibleSDK = Get-ChildItem -Path $swiftRoot -Directory -Recurse -Filter 'Windows.sdk' -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($possibleSDK) {
+              $env:SDKROOT = $possibleSDK.FullName
+              Write-Host "Recovered Swift SDKROOT: $env:SDKROOT"
+            }
+          }
           Get-Command swiftc
           swiftc --version
           Write-Host "SDKROOT=$env:SDKROOT"
