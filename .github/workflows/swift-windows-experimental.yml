@@ -74,12 +74,14 @@ jobs:
           }
           $sdkRoots = @(
             "$env:ProgramFiles\Swift\Platforms\Windows.platform\Developer\SDKs",
-            "$env:ProgramFiles\Platforms\Windows.platform\Developer\SDKs"
+            "$env:ProgramFiles\Platforms\Windows.platform\Developer\SDKs",
+            "$env:LOCALAPPDATA\Programs\Swift\Platforms\Windows.platform\Developer\SDKs"
           )
           foreach ($s in $sdkRoots) {
             if (Test-Path $s) {
               $sdk = Get-ChildItem $s -Directory | Where-Object { $_.Name -like '*Windows.sdk*' } | Select-Object -First 1
               if ($sdk) {
+                Write-Host "Swift SDKROOT: $($sdk.FullName)"
                 Add-Content -Path $env:GITHUB_ENV -Value "SDKROOT=$($sdk.FullName)"
                 break
               }
@@ -95,7 +97,10 @@ jobs:
         run: |
           Get-Command swiftc
           swiftc --version
+          Write-Host "SDKROOT=$env:SDKROOT"
           python scripts/build.py
+          & .\compiled-output\hello.exe
+          if ($LASTEXITCODE -ne 0) { throw "Swift built program exited with $LASTEXITCODE" }
       - name: Upload Swift executable
         uses: actions/upload-artifact@v4
         with:
